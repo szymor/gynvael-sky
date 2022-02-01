@@ -3,6 +3,9 @@
 // http://vexillium.org
 // mailto: gynvael@vexillium.org
 //
+// Port to Miyoo/Bittboy by vamastah
+// mailto: szymorawski@gmail.com
+//
 // Note:
 //  This version of .S.k.y. has yet to be optimised.
 //  This version uses SDL (I've used 1.2.12), and has been tested on
@@ -45,14 +48,15 @@
 #include <cstring>
 #include <cstdlib>
 #include <SDL/SDL.h>
+#include <SDL/SDL_gfxPrimitives.h>
 #include <math.h>
 #include "Vector3D.h"
 
 //
 // Constants
 //
-#define WIDTH  1024
-#define HEIGHT 600
+#define WIDTH  320
+#define HEIGHT 240
 
 #define HMAP_WIDTH 4097
 #define HMAP_DEPTH 4097
@@ -67,7 +71,8 @@
 // (not to pretty, but still it works)
 //
 
-int xPos, yPos;         // Mouse coordinates
+SDL_Surface *Screen;
+double xPos, yPos;         // Mouse coordinates
 unsigned char *picture; // RGB buffer
 int *RenderCache;       // Buffer for indexes of the heightmap elements vs the picture buffer
 float *hmap;            // Buffer containing the heightmap
@@ -81,6 +86,9 @@ Vector3D sun_color2 = Vector3D( 2.0f, 2.0f, 2.0f );    // Specular light color
 int TH_from[4], TH_to[4];  // Threads
 bool TH_done[4];           // Threads
 
+int fps = 0;
+bool fps_on = false;
+
 //
 // Structures
 //
@@ -90,6 +98,26 @@ struct myRGB {
 };
 //#pragma pack(pop)
 
+void fps_counter(double dt)
+{
+	static double total = 0;
+	static int count = 0;
+	total += dt;
+	++count;
+	if (total > 1.0)
+	{
+		fps = count;
+		total -= 1.0;
+		count = 0;
+	}
+}
+
+void fps_draw(void)
+{
+	char string[8] = "";
+	sprintf(string, "%d", fps);
+	stringRGBA(Screen, 0, HEIGHT - 10, string, 255, 255, 255, 255);
+}
 
 //
 // Function: calc_normal
@@ -353,13 +381,14 @@ void MakePicture()
   total_min_y = HEIGHT;
 
   float base_y = 0.0f;
-  for(z = HMAP_DEPTH - 15; z >= 1; z--, base_y = z / 10.0f)
+  for(z = HMAP_DEPTH - 15; z >= 1; z--, base_y = z / 20.0f)
   {
     printf("                                                 \rCaching: %i\r", z);
     for(x = 0; x < WIDTH; x++)
     {
+      int id = x * 16 / 5 + z * HMAP_WIDTH;
       // Get the heightmap data
-      float max_y = hmap[x + z * HMAP_WIDTH];
+      float max_y = hmap[id] * 0.5;
 
       // Bar top and bottom
       int y_from = (HEIGHT - 1) - (int)base_y + 100;
@@ -378,7 +407,7 @@ void MakePicture()
       // "Draw" the bar 
       for(y = y_from; y > y_to; y--)
       {
-        RenderCache[x + y * WIDTH] = x + z * HMAP_WIDTH; 
+        RenderCache[x + y * WIDTH] = id; 
       }
     }
   }  
@@ -560,9 +589,9 @@ RenderProc(SDL_Surface *Screen)
   float bg_start[3] = { 96.0f, 128.0f, 190.0f };
   //float bg_end[3]   = { 168.0f, 228.0f, 236.0f };
   float bg_end[3]   = { 255.0f, 255.0f, 255.0f };
-  float bg_diff[3]  = { (bg_end[0] - bg_start[0]) / (float)(HEIGHT*18/40),
-                        (bg_end[1] - bg_start[1]) / (float)(HEIGHT*18/40),
-                        (bg_end[2] - bg_start[2]) / (float)(HEIGHT*18/40) };
+  float bg_diff[3]  = { (bg_end[0] - bg_start[0]) / (float)(HEIGHT*22/40),
+                        (bg_end[1] - bg_start[1]) / (float)(HEIGHT*22/40),
+                        (bg_end[2] - bg_start[2]) / (float)(HEIGHT*22/40) };
 
   // Render the background (it has to be done only once)
   for(y = 0; y < HEIGHT; y++, bg_start[0] += bg_diff[0], bg_start[1] += bg_diff[1], bg_start[2] += bg_diff[2] )
@@ -598,10 +627,16 @@ RenderProc(SDL_Surface *Screen)
   SDL_CreateThread((int(SDLCALL*)(void*))RenderWorker, (void*)3);
 
   // Inf loop any one?
+  Uint32 curr = SDL_GetTicks();
+  Uint32 prev = curr;
   while(1)
   {
-    // Calc some time
-    unsigned int t1 = SDL_GetTicks();
+    curr = SDL_GetTicks();
+    Uint32 delta = curr - prev;
+    prev = curr;
+    double dt = delta / 1000.0;
+    fps_counter(dt);
+
     r += 0.2f; // Not used right now
 
     // Recalc the suns position
@@ -619,11 +654,10 @@ RenderProc(SDL_Surface *Screen)
     // Wait for them to finish
     while(!(TH_done[0] && TH_done[1] && TH_done[2] && TH_done[3])) SDL_Delay(0);
 
+    if (fps_on)
+        fps_draw();
     // Update the window
     SDL_Flip(Screen);
-
-    // Some info about the time
-    printf("Render: %i ms per frame\n", (int)(SDL_GetTicks() - t1));
   }
 
   // Sorry, inf loop, never happens
@@ -662,7 +696,6 @@ main(int argc, char **argv)
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
 
   // Create the window
-  SDL_Surface *Screen;
   Screen = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_HWSURFACE);
   if(!Screen)
   {
@@ -678,7 +711,14 @@ main(int argc, char **argv)
   // Create the main render thread
   SDL_CreateThread((int(SDLCALL*)(void*))RenderProc, (void*)Screen);
 
+  double vx = 0;
+  double vy = 0;
+  xPos = WIDTH / 2;
+  yPos = HEIGHT / 4 * 15;
+
   // Message loop
+  Uint32 curr = SDL_GetTicks();
+  Uint32 prev = curr;
   bool Done = false;
   while(!Done)
   {
@@ -690,17 +730,50 @@ main(int argc, char **argv)
     {
       switch(Ev.type)
       {
-        // Esc down ?
+        case SDL_KEYUP:
+          switch (Ev.key.keysym.sym)
+          {
+              case SDLK_LEFT:
+              case SDLK_RIGHT:
+                vx = 0;
+                break;
+              case SDLK_UP:
+              case SDLK_DOWN:
+                vy = 0;
+                break;
+          }
+          break;
         case SDL_KEYDOWN:
-          if(Ev.key.keysym.sym == SDLK_ESCAPE)
-            Done = true;
+          switch (Ev.key.keysym.sym)
+          {
+              case SDLK_RETURN:
+                fps_on = !fps_on;
+                break;
+              case SDLK_LEFT:
+                vx = -100;
+                break;
+              case SDLK_RIGHT:
+                vx = 100;
+                break;
+              case SDLK_UP:
+                vy = -300;
+                break;
+              case SDLK_DOWN:
+                vy = 300;
+                break;
+              case SDLK_ESCAPE:
+                  Done = true;
+                  break;
+          }
           break;
 
         // Light move ?
+          /*
         case SDL_MOUSEMOTION:
           xPos = Ev.motion.x;
-          yPos = Ev.motion.y * 5; // A little cheat
+          yPos = Ev.motion.y * 15; // A little cheat
           break;
+          */
 
         // Done ?
         case SDL_QUIT:
@@ -709,7 +782,14 @@ main(int argc, char **argv)
       }
     }
 
+    curr = SDL_GetTicks();
+    Uint32 delta = curr - prev;
+    prev = curr;
+    double dt = delta / 1000.0;
+
     // Stay a while and sleep
+    xPos += vx * dt;
+    yPos += vy * dt;
     SDL_Delay(10);
   }
 
