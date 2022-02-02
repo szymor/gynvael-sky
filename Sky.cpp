@@ -58,8 +58,8 @@
 #define WIDTH  320
 #define HEIGHT 240
 
-#define HMAP_WIDTH 4097
-#define HMAP_DEPTH 4097
+#define HMAP_WIDTH 1281
+#define HMAP_DEPTH 641
 
 //
 // Function declarations
@@ -381,18 +381,18 @@ void MakePicture()
   total_min_y = HEIGHT;
 
   float base_y = 0.0f;
-  for(z = HMAP_DEPTH - 15; z >= 1; z--, base_y = z / 20.0f)
+  for(z = HMAP_DEPTH - 15; z >= 1; z--, base_y = z / 2.0f)
   {
     printf("                                                 \rCaching: %i\r", z);
     for(x = 0; x < WIDTH; x++)
     {
-      int id = x * 16 / 5 + z * HMAP_WIDTH;
+      int id = x + z * HMAP_WIDTH;
       // Get the heightmap data
       float max_y = hmap[id] * 0.5;
 
       // Bar top and bottom
-      int y_from = (HEIGHT - 1) - (int)base_y + 100;
-      int y_to   = (HEIGHT - 1) - (int)base_y - (int)max_y + 100;
+      int y_from = (HEIGHT - 1) - (int)base_y + 200;
+      int y_to   = (HEIGHT - 1) - (int)base_y - (int)max_y + 200;
 
       // Does reach out of the screen ? Fir it then
       if(y_from < 0)          y_from = 0;
@@ -495,7 +495,7 @@ void Render(myRGB *img, int from, int to)
       // Diffusive 2
       if (dot < -0.2)
       {
-        float diff = dot*dot*dot*dot*dot*dot * 0.5f * per; // Play with this to get nice effects
+        float diff = dot*dot*dot*dot*dot*dot * 0.3f * per; // Play with this to get nice effects
         color += sun_color * diff;
       }
 
@@ -714,7 +714,7 @@ main(int argc, char **argv)
   double vx = 0;
   double vy = 0;
   xPos = WIDTH / 2;
-  yPos = HEIGHT / 4 * 15;
+  yPos = HEIGHT / 2;
 
   // Message loop
   Uint32 curr = SDL_GetTicks();
@@ -756,10 +756,10 @@ main(int argc, char **argv)
                 vx = 100;
                 break;
               case SDLK_UP:
-                vy = -300;
+                vy = -100;
                 break;
               case SDLK_DOWN:
-                vy = 300;
+                vy = 100;
                 break;
               case SDLK_ESCAPE:
                   Done = true;
