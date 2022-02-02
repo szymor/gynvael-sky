@@ -704,6 +704,7 @@ main(int argc, char **argv)
   }
 
   SDL_WM_SetCaption(".S.k.y. by gynvael.coldwind//vx", NULL);
+  SDL_ShowCursor(SDL_DISABLE);
 
   // Finally set the picture
   picture = (unsigned char*)Screen->pixels;
@@ -715,6 +716,7 @@ main(int argc, char **argv)
   double vy = 0;
   xPos = WIDTH / 2;
   yPos = HEIGHT / 2;
+  bool automove = true;
 
   // Message loop
   Uint32 curr = SDL_GetTicks();
@@ -751,30 +753,25 @@ main(int argc, char **argv)
                 break;
               case SDLK_LEFT:
                 vx = -100;
+                automove = false;
                 break;
               case SDLK_RIGHT:
                 vx = 100;
+                automove = false;
                 break;
               case SDLK_UP:
                 vy = -100;
+                automove = false;
                 break;
               case SDLK_DOWN:
                 vy = 100;
+                automove = false;
                 break;
               case SDLK_ESCAPE:
                   Done = true;
                   break;
           }
           break;
-
-        // Light move ?
-          /*
-        case SDL_MOUSEMOTION:
-          xPos = Ev.motion.x;
-          yPos = Ev.motion.y * 15; // A little cheat
-          break;
-          */
-
         // Done ?
         case SDL_QUIT:
           Done = true;
@@ -787,9 +784,20 @@ main(int argc, char **argv)
     prev = curr;
     double dt = delta / 1000.0;
 
+    if (automove)
+    {
+        double ct = curr / 3000.0;
+        double phase = ct - (int)(ct / (2 * M_PI)) * (2 * M_PI);
+        xPos = WIDTH / 2 + (WIDTH / 2) * sin(2 * phase);
+        yPos = 2 * HEIGHT / 3 + (HEIGHT / 2) * cos(3 * phase);
+    }
+    else
+    {
+        xPos += vx * dt;
+        yPos += vy * dt;
+    }
+
     // Stay a while and sleep
-    xPos += vx * dt;
-    yPos += vy * dt;
     SDL_Delay(10);
   }
 
