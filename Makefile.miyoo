@@ -1,0 +1,15 @@
+.PHONY: all clean
+
+PROJECT=sky
+CXX=arm-linux-g++
+PKGCONF=$(shell $(CXX) --print-sysroot)/../../bin/pkg-config
+CFLAGS=$(shell $(PKGCONF) --cflags sdl SDL_gfx) -Ofast -march=armv5te -mtune=arm926ej-s -DMIYOO
+LFLAGS=$(shell $(PKGCONF) --libs sdl SDL_gfx) -lm -ljpeg -lpng -lz
+
+all: $(PROJECT)
+
+sky: Sky.cpp Vector3D.cpp Vector3D.h
+	$(CXX) -o $(PROJECT) $(CFLAGS) Sky.cpp Vector3D.cpp $(LFLAGS)
+
+clean:
+	rm -rf $(PROJECT)
