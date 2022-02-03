@@ -55,11 +55,12 @@
 //
 // Constants
 //
-#define WIDTH  320
-#define HEIGHT 240
+#define WIDTH  (320)
+#define HEIGHT (240)
+#define BPP    (16)
 
-#define HMAP_WIDTH 1281
-#define HMAP_DEPTH 641
+#define HMAP_WIDTH (1281)
+#define HMAP_DEPTH (641)
 
 //
 // Function declarations
@@ -520,9 +521,27 @@ void Render(myRGB *img, int from, int to)
       // Uncomment other shaders to see the normals or the dot product
 
       // Shader - full
+#if BPP == 32
       img[x + y * WIDTH].b = (unsigned char)(color.arr[0] * 255.0f);
       img[x + y * WIDTH].g = (unsigned char)(color.arr[1] * 255.0f);
       img[x + y * WIDTH].r = (unsigned char)(color.arr[2] * 255.0f);
+#elif BPP == 16
+      Uint16 *im = (Uint16*)Screen->pixels;
+      SDL_PixelFormat *f = Screen->format;
+      Uint16 bb = color.arr[2] * 255.0f;
+      Uint16 gg = color.arr[1] * 255.0f;
+      Uint16 rr = color.arr[0] * 255.0f;
+      bb >>= f->Bloss;
+      bb <<= f->Bshift;
+      //bb &= f->Bmask;
+      gg >>= f->Gloss;
+      gg <<= f->Gshift;
+      //gg &= f->Gmask;
+      rr >>= f->Rloss;
+      rr <<= f->Rshift;
+      //rr &= f->Rmask;
+      im[x + y * WIDTH] = bb | gg | rr;
+#endif
 
       // Normals - shader
       //img[x + y * WIDTH].b = 127 + (unsigned char)(NormalMap[idx].arr[0] * 127.0f);
@@ -571,7 +590,7 @@ main(int argc, char **argv)
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
 
   // Create the window
-  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_HWSURFACE);
+  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, BPP, SDL_HWSURFACE);
   if(!Screen)
   {
     fprintf(stderr, "SDL_SetVideoMode() Failed!");
@@ -603,9 +622,27 @@ main(int argc, char **argv)
   {
     for(x = 0; x < WIDTH; x++)
     {
+#if BPP == 32
       img[x + y * WIDTH].b = (unsigned char)bg_start[0];
       img[x + y * WIDTH].g = (unsigned char)bg_start[1];
       img[x + y * WIDTH].r = (unsigned char)bg_start[2];
+#elif BPP == 16
+      Uint16 *im = (Uint16*)Screen->pixels;
+      SDL_PixelFormat *f = Screen->format;
+      Uint16 bb = bg_start[2];
+      Uint16 gg = bg_start[1];
+      Uint16 rr = bg_start[0];
+      bb >>= f->Bloss;
+      bb <<= f->Bshift;
+      //bb &= f->Bmask;
+      gg >>= f->Gloss;
+      gg <<= f->Gshift;
+      //gg &= f->Gmask;
+      rr >>= f->Rloss;
+      rr <<= f->Rshift;
+      //rr &= f->Rmask;
+      im[x + y * WIDTH] = bb | gg | rr;
+#endif
     }
   }
   // >> end of rendering setup
