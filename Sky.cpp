@@ -539,131 +539,6 @@ void Render(myRGB *img, int from, int to)
   }
 }
 
-//
-// Function: RenderWorker
-//   Render part of an image in a thread in a loop.
-//
-// In:
-//   The ID of the thread.
-//
-// Out:
-//   Nothing, inf loop
-//
-int SDLCALL
-RenderWorker(int nr)
-{
-  // Inf loop anyone ?
-  while(1)
-  {
-    // Wait until sth to do
-    while(TH_done[nr]) SDL_Delay(0);
-
-    // Render!
-    Render((myRGB*)picture, TH_from[nr], TH_to[nr]);
-    TH_done[nr] = true;
-  }
-
-  return 0;
-}
-
-//
-// Function: RenderProc
-//   The main render invoker. Also draws background.
-//
-// In:
-//   SDL_Surface of the window to draw on.
-//
-// Out:
-//   Nothing interesting
-//
-int
-RenderProc(SDL_Surface *Screen)
-{
-  float r = 0.0f;
-  int x, y;
-  //myRGB *img = (myRGB*)picture;
-  myRGB *img = (myRGB*)Screen->pixels;
-
-  // Generate background
-  //  float bg_start[3] = { 32.0f, 69.0f, 113.0f };
-  float bg_start[3] = { 96.0f, 128.0f, 190.0f };
-  //float bg_end[3]   = { 168.0f, 228.0f, 236.0f };
-  float bg_end[3]   = { 255.0f, 255.0f, 255.0f };
-  float bg_diff[3]  = { (bg_end[0] - bg_start[0]) / (float)(HEIGHT*22/40),
-                        (bg_end[1] - bg_start[1]) / (float)(HEIGHT*22/40),
-                        (bg_end[2] - bg_start[2]) / (float)(HEIGHT*22/40) };
-
-  // Render the background (it has to be done only once)
-  for(y = 0; y < HEIGHT; y++, bg_start[0] += bg_diff[0], bg_start[1] += bg_diff[1], bg_start[2] += bg_diff[2] )
-  {
-    for(x = 0; x < WIDTH; x++)
-    {
-      img[x + y * WIDTH].b = (unsigned char)bg_start[0];
-      img[x + y * WIDTH].g = (unsigned char)bg_start[1];
-      img[x + y * WIDTH].r = (unsigned char)bg_start[2];
-    }
-  }
-
-  // Setup thread data
-  int howmany = (HEIGHT - total_min_y) / 4;
-  TH_from[0] = total_min_y;
-  TH_from[1] = total_min_y + howmany;
-  TH_from[2] = total_min_y + howmany * 2;
-  TH_from[3] = total_min_y + howmany * 3;
-  TH_to[0]   = TH_from[1];
-  TH_to[1]   = TH_from[2];
-  TH_to[2]   = TH_from[3];
-  TH_to[3]   = HEIGHT;
-
-  TH_done[0] = true;
-  TH_done[1] = true;
-  TH_done[2] = true;
-  TH_done[3] = true;
-
-  // Init threads
-  SDL_CreateThread((int(SDLCALL*)(void*))RenderWorker, (void*)0);
-  SDL_CreateThread((int(SDLCALL*)(void*))RenderWorker, (void*)1);
-  SDL_CreateThread((int(SDLCALL*)(void*))RenderWorker, (void*)2);
-  SDL_CreateThread((int(SDLCALL*)(void*))RenderWorker, (void*)3);
-
-  // Inf loop any one?
-  Uint32 curr = SDL_GetTicks();
-  Uint32 prev = curr;
-  while(1)
-  {
-    curr = SDL_GetTicks();
-    Uint32 delta = curr - prev;
-    prev = curr;
-    double dt = delta / 1000.0;
-    fps_counter(dt);
-
-    r += 0.2f; // Not used right now
-
-    // Recalc the suns position
-    sun_pos.x = xPos;//sinf(r) * 1000;
-    sun_pos.z = HMAP_DEPTH - yPos;//cosf(r) * 1000;
-
-    //    printf("Start! ");
-
-    // Activate threads
-    TH_done[0] = false;
-    TH_done[1] = false;
-    TH_done[2] = false;
-    TH_done[3] = false;
-
-    // Wait for them to finish
-    while(!(TH_done[0] && TH_done[1] && TH_done[2] && TH_done[3])) SDL_Delay(0);
-
-    if (fps_on)
-        fps_draw();
-    // Update the window
-    SDL_Flip(Screen);
-  }
-
-  // Sorry, inf loop, never happens
-  return 0;
-}
-
 // Get rid of SDL main on windows
 #ifdef _WIN32
 #  undef main
@@ -709,8 +584,31 @@ main(int argc, char **argv)
   // Finally set the picture
   picture = (unsigned char*)Screen->pixels;
 
-  // Create the main render thread
-  SDL_CreateThread((int(SDLCALL*)(void*))RenderProc, (void*)Screen);
+  // >> rendering setup
+  int x, y;
+  //myRGB *img = (myRGB*)picture;
+  myRGB *img = (myRGB*)Screen->pixels;
+
+  // Generate background
+  //  float bg_start[3] = { 32.0f, 69.0f, 113.0f };
+  float bg_start[3] = { 96.0f, 128.0f, 190.0f };
+  //float bg_end[3]   = { 168.0f, 228.0f, 236.0f };
+  float bg_end[3]   = { 255.0f, 255.0f, 255.0f };
+  float bg_diff[3]  = { (bg_end[0] - bg_start[0]) / (float)(HEIGHT*22/40),
+                        (bg_end[1] - bg_start[1]) / (float)(HEIGHT*22/40),
+                        (bg_end[2] - bg_start[2]) / (float)(HEIGHT*22/40) };
+
+  // Render the background (it has to be done only once)
+  for(y = 0; y < HEIGHT; y++, bg_start[0] += bg_diff[0], bg_start[1] += bg_diff[1], bg_start[2] += bg_diff[2] )
+  {
+    for(x = 0; x < WIDTH; x++)
+    {
+      img[x + y * WIDTH].b = (unsigned char)bg_start[0];
+      img[x + y * WIDTH].g = (unsigned char)bg_start[1];
+      img[x + y * WIDTH].r = (unsigned char)bg_start[2];
+    }
+  }
+  // >> end of rendering setup
 
   double vx = 0;
   double vy = 0;
@@ -783,6 +681,7 @@ main(int argc, char **argv)
     Uint32 delta = curr - prev;
     prev = curr;
     double dt = delta / 1000.0;
+    fps_counter(dt);
 
     if (automove)
     {
@@ -797,8 +696,16 @@ main(int argc, char **argv)
         yPos += vy * dt;
     }
 
-    // Stay a while and sleep
-    SDL_Delay(10);
+    // Recalc the suns position
+    sun_pos.x = xPos;//sinf(r) * 1000;
+    sun_pos.z = HMAP_DEPTH - yPos;//cosf(r) * 1000;
+
+    Render((myRGB*)picture, total_min_y, HEIGHT);
+
+    if (fps_on)
+        fps_draw();
+    // Update the window
+    SDL_Flip(Screen);
   }
 
   // Done
