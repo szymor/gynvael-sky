@@ -59,13 +59,8 @@
 #define HEIGHT (240)
 #define BPP    (16)
 
-#define HMAP_WIDTH (1281)
+#define HMAP_WIDTH (321)
 #define HMAP_DEPTH (641)
-
-//
-// Function declarations
-//
-
 
 //
 // Global variables
@@ -84,9 +79,6 @@ Vector3D sun_pos    = Vector3D( -10000, 100.0f, -100); // Light position
 Vector3D sun_color  = Vector3D( 1.0f, 1.5f, 2.0f );    // Diffusive light color
 Vector3D sun_color2 = Vector3D( 2.0f, 2.0f, 2.0f );    // Specular light color
 
-int TH_from[4], TH_to[4];  // Threads
-bool TH_done[4];           // Threads
-
 int fps = 0;
 bool fps_on = false;
 
@@ -98,6 +90,23 @@ struct myRGB {
   unsigned char r,g,b,a;
 };
 //#pragma pack(pop)
+
+#ifdef MIYOO
+double mysin(double a)
+{
+	a = a - (int)(a / (2 * M_PI)) * (2 * M_PI);
+	return sin(a);
+}
+
+double mycos(double a)
+{
+	a = a - (int)(a / (2 * M_PI)) * (2 * M_PI);
+	return cos(a);
+}
+
+#define sin mysin
+#define cos mycos
+#endif
 
 void fps_counter(double dt)
 {
@@ -487,11 +496,12 @@ void Render(myRGB *img, int from, int to)
       // Diffusive
       float dot;
       dot = L.Dot(NormalMap[idx]);
+	  /*
       if (dot < 0.0)
       {
         float diff = -dot * 0.1f * per; // Play with this to get nice effects
         color += (sun_color * vp_color) * diff;
-      }
+      }*/
 
       // Diffusive 2
       if (dot < -0.2)
@@ -501,6 +511,7 @@ void Render(myRGB *img, int from, int to)
       }
 
       // Specular
+	  /*
       Vector3D R = L -  N * L.Dot(N) * 2.0l;
       Vector3D Cs = Vector3D(0, max_y, max_y);
       Cs.Norm();
@@ -510,7 +521,7 @@ void Render(myRGB *img, int from, int to)
         dot = pow(dot, 40.0);
         float spec = dot * (0.2f * per); // Play with this to get nice effects
         color += sun_color2 * spec;
-      }
+      }*/
 
       // Check
       if(color.arr[0] > 1.0f) color.arr[0] = 1.0f;
@@ -590,7 +601,7 @@ main(int argc, char **argv)
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
 
   // Create the window
-  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, BPP, SDL_HWSURFACE);
+  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, BPP, SDL_SWSURFACE);
   if(!Screen)
   {
     fprintf(stderr, "SDL_SetVideoMode() Failed!");
@@ -722,10 +733,10 @@ main(int argc, char **argv)
 
     if (automove)
     {
-        double ct = curr / 3000.0;
-        double phase = ct - (int)(ct / (2 * M_PI)) * (2 * M_PI);
-        xPos = WIDTH / 2 + (WIDTH / 2) * sin(2 * phase);
-        yPos = 2 * HEIGHT / 3 + (HEIGHT / 2) * cos(3 * phase);
+        double ct1 = curr / 1500.0;
+		double ct2 = curr / 1000.0;
+        xPos = WIDTH / 2 + (WIDTH / 2) * sin(ct1);
+        yPos = 2 * HEIGHT / 3 + (HEIGHT / 2) * cos(ct2);
     }
     else
     {
