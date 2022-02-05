@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=.S.k.y.
+Comment=A fancy demo effect
+Exec=sky
+Terminal=false
+Type=Game
+StartupNotify=true
+Icon=icon
+Categories=games;
+Version=20220205
+X-OD-Manual=README.md

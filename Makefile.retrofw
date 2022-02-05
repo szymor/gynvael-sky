@@ -1,0 +1,19 @@
+.PHONY: all clean
+
+PROJECT=sky
+OPK=sky.opk
+CXX=mipsel-linux-g++
+PKGCONF=$(shell $(CXX) --print-sysroot)/../../bin/pkg-config
+CFLAGS=$(shell $(PKGCONF) --cflags sdl SDL_gfx) -Ofast -DRETROFW
+LFLAGS=$(shell $(PKGCONF) --libs sdl SDL_gfx) -lm -ljpeg -lpng -lz
+
+all: $(OPK)
+
+$(OPK): $(PROJECT) himap.raw normal.cache icon.png sky.retrofw.desktop LICENSE README.md
+	mksquashfs $^ $@ -noappend -no-xattrs
+
+$(PROJECT): Sky.cpp Vector3D.cpp Vector3D.h
+	$(CXX) -o $(PROJECT) $(CFLAGS) Sky.cpp Vector3D.cpp $(LFLAGS)
+
+clean:
+	rm -rf $(PROJECT) $(OPK)

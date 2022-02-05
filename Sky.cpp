@@ -59,6 +59,14 @@
 #define HEIGHT (240)
 #define BPP    (16)
 
+#if defined(MIYOO)
+#define FLAGS  (SDL_SWSURFACE)
+#elif defined(RETROFW)
+#define FLAGS  (SDL_HWSURFACE)
+#else
+#define FLAGS  (SDL_HWSURFACE | SDL_DOUBLEBUF)
+#endif
+
 #define HMAP_WIDTH (321)
 #define HMAP_DEPTH (641)
 
@@ -601,7 +609,8 @@ main(int argc, char **argv)
   SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE);
 
   // Create the window
-  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, BPP, SDL_SWSURFACE);
+
+  Screen = SDL_SetVideoMode(WIDTH, HEIGHT, BPP, FLAGS);
   if(!Screen)
   {
     fprintf(stderr, "SDL_SetVideoMode() Failed!");
